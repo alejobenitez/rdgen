@@ -734,10 +734,3 @@ jobs:
         uses: geekyeggo/delete-artifact@v5
         with:
           name: encrypted-secrets-zip
-          
- - name: Forzar guardado de cliente
-      uses: actions/upload-artifact@v4
-      if: always() # Esto hace que se guarde aunque lo anterior falle
-      with:
-        name: Cliente-RustDesk-Final
-        path: ./*.zip
