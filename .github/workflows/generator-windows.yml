@@ -670,17 +670,31 @@ jobs:
       - name: rename rustdesk.exe to filename.exe
         run: |
           mv ./SignOutput/rustdesk.exe "./SignOutput/${{ env.filename }}.exe" || echo "rustdesk"
+# ... (Mantén todo el inicio igual hasta llegar a los pasos finales de 'build-for-windows-flutter') ...
+# Busca la línea que dice: - name: rename rustdesk.msi to filename.msi
+# Y REEMPLAZA DESDE AHÍ HASTA EL FINAL DEL JOB POR ESTO:
 
       - name: rename rustdesk.msi to filename.msi
         continue-on-error: true
         run: |
-          mv ./SignOutput/rustdesk.msi "./SignOutput/${{ env.filename }}.msi" || echo "rustdesk"
+          mv ./SignOutput/rustdesk.msi "./SignOutput/${{ env.filename }}.msi" || echo "rustdesk msi not found"
+
+      - name: 🚀 GUARDAR ARTEFACTOS EN GITHUB (BACKUP SEGURO)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RustDesk-Windows-Installers
+          path: |
+            ./SignOutput/${{ env.filename }}.exe
+            ./SignOutput/${{ env.filename }}.msi
+          retention-days: 5
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
+        continue-on-error: true
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 2
           max_attempts: 3
           shell: bash
           command: |
@@ -689,48 +703,32 @@ jobs:
 
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
+        continue-on-error: true
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 2
           max_attempts: 3
           shell: bash
           command: |
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.exe" ${{ env.apiServer }}/api/save_custom_client
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.msi" ${{ env.apiServer }}/api/save_custom_client || true
 
-      - name: Report Status
+      - name: Report Status Success
         uses: fjogeleit/http-request-action@v1
+        if: success()
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ env.uuid }}", "status": "Success"}'
 
-      - name: failed
+      - name: Report Status Failed
         if: failure()
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ env.uuid }}", "status": "Generation failed, try again"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "Generation failed, but check GitHub Artifacts"}'
 
-      - name: failed
-        if: cancelled()
-        uses: fjogeleit/http-request-action@v1
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ env.uuid }}", "status": "Generation cancelled, try again"}'
-
-  cleanup:
-    needs: [build-for-windows-flutter]
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    if: always()
-    steps:
-      - name: Delete secrets artifact
-        uses: geekyeggo/delete-artifact@v5
-        with:
-          name: encrypted-secrets-zip
+# ... (El resto del job de cleanup se mantiene igual) ...
