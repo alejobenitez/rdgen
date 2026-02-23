@@ -732,3 +732,13 @@ jobs:
           data: '{"uuid": "${{ env.uuid }}", "status": "Generation failed, but check GitHub Artifacts"}'
 
 # ... (El resto del job de cleanup se mantiene igual) ...
+  cleanup:
+    needs: [build-for-windows-flutter]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    if: always()
+    steps:
+      - name: Delete secrets artifact
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: encrypted-secrets-zip
